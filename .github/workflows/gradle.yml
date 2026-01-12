@@ -40,7 +40,7 @@ jobs:
       matrix:
         os:
           - ubuntu-latest
-          
+
 
     steps:
       # ------------------------------
