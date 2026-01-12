@@ -1,0 +1,88 @@
+
+name: shortLink CI/CD
+
+# Триггеры запуска pipeline
+on:
+  # Запуск при пуше в main
+  push:
+    branches: [ "main" ]
+
+  # Запуск при pull request в main
+  pull_request:
+    branches: [ "main" ]
+
+# Глобальные переменные окружения,
+# доступны во всех job'ах
+env:
+  JAVA_VERSION: '17'          # Версия Java
+  APP_NAME: shortLink             # Имя приложения
+  JAR_NAME: shortLink.jar         # Итоговое имя jar-файла
+
+jobs:
+
+  # ============================================================
+  # JOB: Сборка и тестирование (CI)
+  # ============================================================
+  build-and-test:
+    # Имя job'а (видно в UI)
+    name: Build & Test (${{ matrix.os }})
+
+    # ОС будет определяться матрицей ниже
+    runs-on: ${{ matrix.os }}
+
+    # Стратегия запуска
+    strategy:
+      # false = не останавливать все сборки,
+      # если одна из ОС упала
+      fail-fast: false
+
+      # Матрица ОС
+      matrix:
+        os:
+          - ubuntu-latest
+          
+
+    steps:
+      # ------------------------------
+      # Шаг 1: Клонирование репозитория
+      # ------------------------------
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      # ------------------------------
+      # Шаг 2: Установка Java 17
+      # ------------------------------
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'     # OpenJDK от Eclipse
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: gradle               # Кэш зависимостей Gradle
+
+      # --------------------------------------------------
+      # Шаг 3: Права на gradlew (только для Linux)
+      # --------------------------------------------------
+      - name: Grant execute permission for Gradle wrapper
+        if: runner.os == 'Linux'
+        run: chmod +x gradlew
+
+      # -----------------------------------------
+      # Шаг 4: Сборка и запуск тестов
+      # -----------------------------------------
+      # Выполняет:
+      #  - компиляцию
+      #  - тесты
+      #  - линты
+      - name: Build and test project
+        run: ./gradlew clean build
+
+      # --------------------------------------------------
+      # Шаг 5: Загрузка JAR как артефакта
+      # --------------------------------------------------
+      # На Linux
+      - name: Upload JAR artifact
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-jar
+          path: build/libs/*.jar
